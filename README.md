@@ -10,10 +10,15 @@ This CNI has been tested in the following environments
 | 24.04   | 6.8.0-1033-ibm | 1.33.5 | 0.4.0 |
 
 # Preconditions
-* Have Go 1.23 version
-* CNI is only valid for VSI VPC on IBM Cloud
-* TP must be bound with VPC admin permissions
-* Metadata must be enabled
+* Ensure Go 1.23 (or later) is installed.
+* This CNI is supported only for VSI workers on VPC in IBM Cloud.
+* A Trusted Profile with VPC administrator permissions must be used.
+* Instance Metadata Service must be enabled.
+
+# Current features
+* Integration with Trusted Profiles
+* Supports multiple VNIs
+* Manages subnet IP reservation, including assigning, releasing, and binding IPs as secondary IPs on VNIs
 
 # How to use it
 Compite it
