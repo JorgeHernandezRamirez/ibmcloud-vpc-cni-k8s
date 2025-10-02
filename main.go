@@ -1,0 +1,85 @@
+package main
+
+import (
+	"ibmcloud-vpc-cni-k8s/pkg/veth"
+	"ibmcloud-vpc-cni-k8s/pkg/vni"
+	"ibmcloud-vpc-cni-k8s/pkg/vpc"
+	"net"
+	"runtime"
+
+	"github.com/containernetworking/cni/pkg/skel"
+	types "github.com/containernetworking/cni/pkg/types/040"
+	"github.com/containernetworking/cni/pkg/version"
+	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
+)
+
+func cmdAdd(args *skel.CmdArgs) error {
+	vniInstance := vni.NewVNI().GetVNICandidate()
+	vpcInstance := vpc.NewVPC()
+	reservedID := vpcInstance.ReservedIP(vniInstance.SubnetID)
+	defer func() {
+		if r := recover(); r != nil {
+			if reservedID != nil {
+				vpcInstance.ReleaseIP(vniInstance.SubnetID, reservedID.ID)
+			}
+			panic(r)
+		}
+	}()
+	vpcInstance.AddIP(vniInstance.ID, reservedID.ID)
+	ipNet := getIpNet(reservedID.Address, vpcInstance.GetSubnetPrefix(vniInstance.SubnetID))
+	veth.SetupPodVeth(args, ipNet, vpcInstance.GetGatewayIP(vniInstance.SubnetID), args.Netns)
+	result := getResult(ipNet, vniInstance.SubnetID, vpcInstance)
+	return result.Print()
+}
+
+func getResult(ipNet *net.IPNet, subnetID string, vpcInstance vpc.VPC) *types.Result {
+	return &types.Result{
+		CNIVersion: "0.4.0",
+		IPs: []*types.IPConfig{
+			{
+				Version: "4",
+				Address: *ipNet,
+				Gateway: vpcInstance.GetGatewayIP(subnetID),
+			},
+		},
+	}
+}
+
+func getIpNet(address string, prefix int) *net.IPNet {
+	ipNet := &net.IPNet{
+		IP:   net.ParseIP(address),
+		Mask: net.CIDRMask(prefix, 32),
+	}
+	return ipNet
+}
+
+func cmdDel(args *skel.CmdArgs) error {
+	vni := vni.NewVNI()
+	vpc := vpc.NewVPC()
+	origNS, _ := netns.Get() // save current namespace
+	podNS, _ := netns.GetFromPath(args.Netns)
+	defer podNS.Close()
+	runtime.LockOSThread() // important!
+	defer origNS.Close()
+	netns.Set(podNS)
+	podLink, _ := netlink.LinkByName(args.IfName)
+	addrs, _ := netlink.AddrList(podLink, 2)
+	for _, a := range addrs {
+		if a.IP.String() != "127.0.0.1" {
+			id, subnetID, err := vni.GetIdFromIp(a.IP.String())
+			if err == nil {
+				vpc.ReleaseIP(subnetID, id)
+			}
+		}
+	}
+	netns.Set(origNS)
+	return nil
+}
+
+func main() {
+	skel.PluginMainFuncs(skel.CNIFuncs{
+		Add: cmdAdd,
+		Del: cmdDel,
+	}, version.All, "ibmcloud-vpc-cni-k8s")
+}
