@@ -108,7 +108,7 @@ go --version
 ```
 
 ### Provision Kubernetes infrastructure
-The intent of this section is to provision the following components. We will keep the solution as simple as possible.
+The intend of this section is to provision the following components. We will keep the solution as simple as possible.
 * 1 VPC
 * 2 Subnets (```10.1.1.0/24```, ```10.1.2.0/24```)
 * 3 VSI (1 master and 2 workers)
