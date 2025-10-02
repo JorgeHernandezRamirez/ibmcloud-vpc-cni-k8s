@@ -34,12 +34,12 @@ This CNI has been tested in the following environments
 # How to use it
 But before.... If you need a Kubernetes cluster infrastructure go [here](#provision-kubernetes-infrastructure). Remember that you need access to both the master and worker nodes to test it properly.
 
-Compile it
+Compile it on x86 machine!
 ```bash
 make
 ```
 ### Manual configuration
-Upload it to workers
+Upload it to workers and copy it to ```/opt/cni/bin/``` directory
 ```bash
 sudo cp ibmcloud-vpc-cni-k8s /opt/cni/bin/
 sudo mkdir -p /opt/cni/bin
