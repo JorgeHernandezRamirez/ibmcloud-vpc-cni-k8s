@@ -28,6 +28,7 @@ This CNI has been tested in the following environments
 * Improve the way network device names are created to avoid constant collisions 
 * Primary IPs for non-primary VNIs are currently not being used
 * Allow apikey integration
+* Enable Auto-release option when IP is bound 
 
 # How to use it
 Compite it
