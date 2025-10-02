@@ -23,7 +23,7 @@ This CNI has been tested in the following environments
 * Manage network veth-pair devices on workers.
 * The solution provide 7 × the number of VNI IPs per worker for pods.
 
-# Next steps
+# Backlog (next steps)
 * Enable private communication only (`${region}.private.iaas.cloud.ibm.com`).
 * Test in an environment with few IPs available.
 * Improve the way network device names are created to avoid collisions 100%. 
