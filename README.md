@@ -34,15 +34,31 @@ This CNI has been tested in the following environments
 # How to use it
 But before.... If you need a Kubernetes cluster infrastructure go [here](#provision-kubernetes-infrastructure). Remember that you need access to both the master and worker nodes to test it properly.
 
+Skip this option if you have Go installed (on Ubuntu)
+```bash
+sudo apt install wget tar make -y
+
+wget https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf go1.23.0.linux-amd64.tar.gz
+
+cat << EOF >> ~/.bashrc
+export PATH=$PATH:/usr/local/go/bin
+export GOPATH=$HOME/go
+EOF
+source ~/.bashrc
+
+go --version
+```
 Compile it on x86 machine!
 ```bash
+cd ibmcloud-vpc-cni-k8s
 make
 ```
 ### Manual configuration
 Upload it to workers and copy it to ```/opt/cni/bin/``` directory
 ```bash
 sudo cp ibmcloud-vpc-cni-k8s /opt/cni/bin/
-sudo mkdir -p /opt/cni/bin
 sudo chmod +x /opt/cni/bin/ibmcloud-vpc-cni-k8s
 ```
 Create 10-ibm-vpc-cni.conf file
@@ -61,6 +77,10 @@ EOF
 Restart kubelet
 ```bash
 service kubelet restart
+```
+Verify workers are ready
+```bash
+kubectl get nodes
 ```
 Create example pods
 ```bash
@@ -90,9 +110,9 @@ kubectl delete pod nginx-pod
 
 # Utils
 
-### Install Go on Centos 9
+### Install Go on Ubuntu
 ```bash
-sudo dnf install wget tar make -y
+sudo apt install wget tar make -y
 
 wget https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
 sudo rm -rf /usr/local/go
@@ -132,6 +152,32 @@ provider "ibm" {
 }
 
 data "ibm_is_region" "region" {
+}
+
+#IAM
+resource "ibm_iam_trusted_profile" "iam_trusted_profile" {
+  name = "tp-cni"
+}
+
+resource "ibm_iam_trusted_profile_claim_rule" "iam_trusted_profile_claim_rule" {
+  profile_id = ibm_iam_trusted_profile.iam_trusted_profile.id
+  type       = "Profile-CR"
+  conditions {
+    claim    = "region"
+    operator = "EQUALS"
+    value    = "\"${data.ibm_is_region.region.name}\""
+  }
+  name    = "rule"
+  cr_type = "VSI"
+}
+
+resource "ibm_iam_trusted_profile_policy" "policy" {
+  profile_id  = ibm_iam_trusted_profile.iam_trusted_profile.id
+  roles       = ["Manager"]
+
+  resources {
+    service = "is"
+  }
 }
 
 # VPC
@@ -235,6 +281,11 @@ resource "ibm_is_instance" "vsi" {
   vpc  = ibm_is_vpc.vpc.id
   zone = each.value.zone
   keys = [ibm_is_ssh_key.key.id]
+  default_trusted_profile_target = ibm_iam_trusted_profile.iam_trusted_profile.id
+  metadata_service {
+     enabled = true
+     protocol = "https"
+  } 
 }
 
 resource "ibm_is_floating_ip" "floating" {
@@ -271,7 +322,7 @@ terraform apply plan.out
 ```
 Repeat the following steps for every machine. Log into
 ```bash 
-ssh root@PUBLICIP
+ssh -i key root@PUBLICIP
 ```
 Update system (master and workers)
 ```bash
@@ -344,7 +395,7 @@ kubeadm token create --print-join-command
 ```
 For every worker run one of previous command shown on stdout (workers)
 ```bash
-#Just and example
+#Just an example
 kubeadm join 10.1.1.4:6443 --token asxf91.han7v1778cwuw54g --discovery-token-ca-cert-hash sha256:a2201e3c35dca5ba87fcc4f875d4a73bc6997b335a5f1ccaabff24e7ef5dc433
 ```
 Configure kubectl on master directly (master)
