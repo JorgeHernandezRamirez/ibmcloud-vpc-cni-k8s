@@ -14,11 +14,20 @@ This CNI has been tested in the following environments
 * This CNI is supported only for VSI workers on VPC in IBM Cloud.
 * A Trusted Profile with VPC administrator permissions must be used.
 * Instance Metadata Service must be enabled.
+* Public internet towards VPC iaas endpoint must be enabled ```${region}.iaas.cloud.ibm.com```
 
 # Current features
 * Integration with Trusted Profiles
 * Supports multiple VNIs
 * Manages subnet IP reservation, including assigning, releasing, and binding IPs as secondary IPs on VNIs
+* Manage network veth-pair devices on workers
+
+# Next steps
+* Enable private communication only (`${region}.private.iaas.cloud.ibm.com`)
+* Test in an environment with few IPs available
+* Improve the way network device names are created to avoid constant collisions 
+* Primary IPs for non-primary VNIs are currently not being used
+* Allow apikey integration
 
 # How to use it
 Compite it
