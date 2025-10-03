@@ -31,6 +31,9 @@ type VirtualNetworkInterfaceResponse struct {
 			CRN string `json:"crn"`
 			ID  string `json:"id"`
 		}
+		PrimaryIP struct {
+			Address string `json:"address"`
+		} `json:"primary_ip"`
 	} `json:"virtual_network_interfaces"`
 }
 

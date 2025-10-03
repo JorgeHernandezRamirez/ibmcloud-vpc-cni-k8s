@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"ibmcloud-vpc-cni-k8s/pkg/utils"
 	"ibmcloud-vpc-cni-k8s/pkg/veth"
 	"ibmcloud-vpc-cni-k8s/pkg/vni"
 	"ibmcloud-vpc-cni-k8s/pkg/vpc"
@@ -14,7 +16,10 @@ import (
 	"github.com/vishvananda/netns"
 )
 
+var logger = utils.NewLogger()
+
 func cmdAdd(args *skel.CmdArgs) error {
+	logger.Log(fmt.Sprintf("New pod: %+v", args))
 	vniInstance := vni.NewVNI().GetVNICandidate()
 	vpcInstance := vpc.NewVPC()
 	reservedID := vpcInstance.ReservedIP(vniInstance.SubnetID)
@@ -30,6 +35,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 	ipNet := getIpNet(reservedID.Address, vpcInstance.GetSubnetPrefix(vniInstance.SubnetID))
 	veth.SetupPodVeth(args, ipNet, vpcInstance.GetGatewayIP(vniInstance.SubnetID), args.Netns)
 	result := getResult(ipNet, vniInstance.SubnetID, vpcInstance)
+	logger.Log(fmt.Sprintf("IP: %s has been added to VNI: %s", reservedID.Address, vniInstance.ID))
 	return result.Print()
 }
 
@@ -55,25 +61,27 @@ func getIpNet(address string, prefix int) *net.IPNet {
 }
 
 func cmdDel(args *skel.CmdArgs) error {
-	vni := vni.NewVNI()
-	vpc := vpc.NewVPC()
+	logger.Log(fmt.Sprintf("Del pod: %+v", args))
+	vniInstance := vni.NewVNI()
+	vpcInstance := vpc.NewVPC()
 	origNS, _ := netns.Get() // save current namespace
 	podNS, _ := netns.GetFromPath(args.Netns)
-	defer podNS.Close()
 	runtime.LockOSThread() // important!
-	defer origNS.Close()
 	netns.Set(podNS)
 	podLink, _ := netlink.LinkByName(args.IfName)
 	addrs, _ := netlink.AddrList(podLink, 2)
 	for _, a := range addrs {
 		if a.IP.String() != "127.0.0.1" {
-			id, subnetID, err := vni.GetIdFromIp(a.IP.String())
-			if err == nil {
-				vpc.ReleaseIP(subnetID, id)
+			vniIP, subnetID, err := vniInstance.GetIdFromIp(a.IP.String())
+			if err == nil && !vniIP.Primary {
+				vpcInstance.ReleaseIP(subnetID, vniIP.Id)
+				logger.Log(fmt.Sprintf("IP: %s has been deleted on VNI: %s and deleted from subnet: %s", vniIP.Ip, vniIP.Id, subnetID))
 			}
 		}
 	}
 	netns.Set(origNS)
+	defer podNS.Close()
+	defer origNS.Close()
 	return nil
 }
 
@@ -81,5 +89,5 @@ func main() {
 	skel.PluginMainFuncs(skel.CNIFuncs{
 		Add: cmdAdd,
 		Del: cmdDel,
-	}, version.All, "ibmcloud-vpc-cni-k8s")
+	}, version.PluginSupports("0.4.0"), "ibmcloud-vpc-cni-k8s")
 }

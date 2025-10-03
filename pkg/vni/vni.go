@@ -6,8 +6,9 @@ import (
 )
 
 type VirtualNetworkInterfaceIP struct {
-	id string
-	ip string
+	Id      string
+	Ip      string
+	Primary bool
 }
 
 type VirtualNetworkInterface struct {
@@ -30,20 +31,21 @@ func (vni *VNI) GetVNIs() []VirtualNetworkInterface {
 	return ConvertVNIs(&metadataVNIs)
 }
 
-func (vni *VNI) GetIdFromIp(ip string) (string, string, error) {
+func (vni *VNI) GetIdFromIp(ip string) (VirtualNetworkInterfaceIP, string, error) {
 	for _, v := range vni.GetVNIs() {
 		for _, i := range v.IPs {
-			if i.ip == ip {
-				return i.id, v.SubnetID, nil
+			if i.Ip == ip {
+				return i, v.SubnetID, nil
 			}
 		}
 	}
-	return "", "", fmt.Errorf("no ID found for IP %s", ip)
+	return VirtualNetworkInterfaceIP{}, "", fmt.Errorf("no ID found for IP %s", ip)
 }
 
 /*
 *
-This function will return a VNI where IP will be resolved. The current algorithm takes the VNI with less IPs
+This function returns a VNI to which a new IP will be bound.
+The current algorithm selects the VNI with the fewest IPs
 */
 func (vni *VNI) GetVNICandidate() *VirtualNetworkInterface {
 	vnis := vni.GetVNIs()
@@ -62,7 +64,7 @@ func ConvertVNIs(metaResp *metadata.VirtualNetworkInterfaceResponse) []VirtualNe
 	for _, vni := range metaResp.VirtualNetworkInterfaces {
 		var ips []VirtualNetworkInterfaceIP
 		for _, ip := range vni.IPs {
-			ips = append(ips, VirtualNetworkInterfaceIP{id: ip.ID, ip: ip.Address})
+			ips = append(ips, VirtualNetworkInterfaceIP{Id: ip.ID, Ip: ip.Address, Primary: vni.PrimaryIP.Address == ip.Address})
 		}
 
 		result = append(result, VirtualNetworkInterface{
