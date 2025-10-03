@@ -29,7 +29,8 @@ This CNI has been tested in the following environments
 * Improve the way network device names are created to avoid collisions 100%. 
 * Primary IPs for non-primary VNIs are currently not being used.
 * Allow apikey integration.
-* Enable Auto-release option when IP is bound. 
+* Enable Auto-release option when IP is bound.
+* Implements cached system for metadata service.
 
 # How to use it
 But before.... If you need a Kubernetes cluster infrastructure go [here](#provision-kubernetes-infrastructure). Remember that you need access to both the master and worker nodes to test it properly.
@@ -109,6 +110,11 @@ kubectl delete pod nginx-pod
 ```
 
 # Utils
+
+### Run tests
+```bash
+go test ./...
+```
 
 ### Install Go on Ubuntu
 ```bash

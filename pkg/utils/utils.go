@@ -5,10 +5,23 @@ import (
 	"strings"
 )
 
-func GetRegion() string {
-	metadata := metadata.NewMetadataService()
-	accessToken, _ := metadata.GetMetadataAccessToken()
-	instance, _ := metadata.GetInstance(accessToken)
+type UtilsInterface interface {
+	GetRegion() string
+	GetDefaultSubnetName() string
+	GetIAMToken() string
+}
+
+type Utils struct {
+	md metadata.MetadataInterface
+}
+
+func NewUtils() UtilsInterface {
+	return &Utils{md: metadata.NewMetadataService()}
+}
+
+func (u *Utils) GetRegion() string {
+	accessToken, _ := u.md.GetMetadataAccessToken()
+	instance, _ := u.md.GetInstance(accessToken)
 	parts := strings.Split(instance.Zone.Name, "-")
 	if len(parts) >= 2 {
 		return strings.Join(parts[:len(parts)-1], "-")
@@ -16,13 +29,12 @@ func GetRegion() string {
 	panic("Cannot determine region")
 }
 
-func GetDefaultSubnetName() string {
+func (u *Utils) GetDefaultSubnetName() string {
 	return "ibm-default-gateway"
 }
 
-func GetIAMToken() string {
-	metadata := metadata.NewMetadataService()
-	accessToken, _ := metadata.GetMetadataAccessToken()
-	iamToken, _ := metadata.GetIAMAccessToken(accessToken)
+func (u *Utils) GetIAMToken() string {
+	accessToken, _ := u.md.GetMetadataAccessToken()
+	iamToken, _ := u.md.GetIAMAccessToken(accessToken)
 	return iamToken
 }

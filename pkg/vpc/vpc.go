@@ -26,13 +26,15 @@ type VPCReservedIP struct {
 }
 type SdkVPC struct {
 	vpcV1 *vpcv1.VpcV1
+	utils utils.UtilsInterface
 }
 
 func NewVPC() VPC {
+	utilsInstance := utils.NewUtils()
 	authenticator := &core.BearerTokenAuthenticator{
-		BearerToken: utils.GetIAMToken(),
+		BearerToken: utilsInstance.GetIAMToken(),
 	}
-	serviceURL, _ := vpcv1.GetServiceURLForRegion(utils.GetRegion())
+	serviceURL, _ := vpcv1.GetServiceURLForRegion(utilsInstance.GetRegion())
 	options := &vpcv1.VpcV1Options{
 		Authenticator: authenticator,
 		URL:           serviceURL,
@@ -40,12 +42,12 @@ func NewVPC() VPC {
 	vpcV1, _ := vpcv1.NewVpcV1(options)
 	return &SdkVPC{
 		vpcV1: vpcV1,
+		utils: utils.NewUtils(),
 	}
 }
 
 func (v *SdkVPC) ReservedIP(subnetID string) *VPCReservedIP {
 	var reservedIP = v.doReservedIP(subnetID)
-
 	for {
 		reservedIP = v.getReservedIP(subnetID, *reservedIP.ID)
 		if *reservedIP.LifecycleState == "available" || *reservedIP.LifecycleState == "stable" {
@@ -101,7 +103,7 @@ func (v *SdkVPC) ReleaseIP(subnetID string, reservedIP string) {
 }
 
 func (v *SdkVPC) GetGatewayIP(subnetID string) net.IP {
-	name := utils.GetDefaultSubnetName()
+	name := v.utils.GetDefaultSubnetName()
 	reservedIps, _, _ := v.vpcV1.ListSubnetReservedIps(&vpcv1.ListSubnetReservedIpsOptions{
 		SubnetID: &subnetID,
 	})

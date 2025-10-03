@@ -43,6 +43,13 @@ type InstanceResponse struct {
 	} `json:"zone"`
 }
 
+type MetadataInterface interface {
+	GetMetadataAccessToken() (string, error)
+	GetIAMAccessToken(auth string) (string, error)
+	GetMetadataVNIs(token string) (*VirtualNetworkInterfaceResponse, error)
+	GetInstance(auth string) (*InstanceResponse, error)
+}
+
 type Metadata struct {
 	client *http.Client
 }
@@ -55,13 +62,13 @@ type MetadataRequest struct {
 	Out    interface{}
 }
 
-func NewMetadataService() *Metadata {
+func NewMetadataService() MetadataInterface {
 	return &Metadata{client: &http.Client{}}
 }
 
 func (md *Metadata) GetMetadataAccessToken() (string, error) {
 	var tokenResp MetadataTokenResponse
-	err := md.doRequest(MetadataRequest{
+	err := md.doRequest(&MetadataRequest{
 		Method: "PUT",
 		URL:    fmt.Sprintf("%s/instance_identity/v1/token?version=%s", metadataBaseURL, metadataAPIVersion),
 		Body:   []byte(`{"expires_in": 3600}`),
@@ -75,7 +82,7 @@ func (md *Metadata) GetMetadataAccessToken() (string, error) {
 
 func (md *Metadata) GetIAMAccessToken(auth string) (string, error) {
 	var tokenResp IAMTokenResponse
-	err := md.doRequest(MetadataRequest{
+	err := md.doRequest(&MetadataRequest{
 		Method: "POST",
 		URL:    fmt.Sprintf("%s/instance_identity/v1/iam_token?version=%s", metadataBaseURL, metadataAPIVersion),
 		Auth:   auth,
@@ -87,29 +94,29 @@ func (md *Metadata) GetIAMAccessToken(auth string) (string, error) {
 	return tokenResp.AccessToken, nil
 }
 
-func (md *Metadata) GetMetadataVNIs(auth string) (VirtualNetworkInterfaceResponse, error) {
+func (md *Metadata) GetMetadataVNIs(auth string) (*VirtualNetworkInterfaceResponse, error) {
 	var metaResp VirtualNetworkInterfaceResponse
-	err := md.doRequest(MetadataRequest{
+	err := md.doRequest(&MetadataRequest{
 		Method: "GET",
 		URL:    fmt.Sprintf("%s/metadata/v1/virtual_network_interfaces?version=%s", metadataBaseURL, metadataAPIVersion),
 		Auth:   auth,
 		Out:    &metaResp,
 	})
-	return metaResp, err
+	return &metaResp, err
 }
 
-func (md *Metadata) GetInstance(auth string) (InstanceResponse, error) {
+func (md *Metadata) GetInstance(auth string) (*InstanceResponse, error) {
 	var instResponse InstanceResponse
-	err := md.doRequest(MetadataRequest{
+	err := md.doRequest(&MetadataRequest{
 		Method: "GET",
 		URL:    fmt.Sprintf("%s/metadata/v1/instance?version=%s", metadataBaseURL, metadataAPIVersion),
 		Auth:   auth,
 		Out:    &instResponse,
 	})
-	return instResponse, err
+	return &instResponse, err
 }
 
-func (md *Metadata) doRequest(reqData MetadataRequest) error {
+func (md *Metadata) doRequest(reqData *MetadataRequest) error {
 	req, err := http.NewRequest(reqData.Method, reqData.URL, bytes.NewBuffer(reqData.Body))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)

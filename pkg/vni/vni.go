@@ -18,28 +18,28 @@ type VirtualNetworkInterface struct {
 }
 
 type VNI struct {
-	md *metadata.Metadata
+	md metadata.MetadataInterface
 }
 
 func NewVNI() *VNI {
 	return &VNI{md: metadata.NewMetadataService()}
 }
 
-func (vni *VNI) GetVNIs() []VirtualNetworkInterface {
+func (vni *VNI) GetVNIs() *[]VirtualNetworkInterface {
 	metadataAccessToken, _ := vni.md.GetMetadataAccessToken()
 	metadataVNIs, _ := vni.md.GetMetadataVNIs(metadataAccessToken)
-	return ConvertVNIs(&metadataVNIs)
+	return ConvertVNIs(metadataVNIs)
 }
 
-func (vni *VNI) GetIdFromIp(ip string) (VirtualNetworkInterfaceIP, string, error) {
-	for _, v := range vni.GetVNIs() {
+func (vni *VNI) GetIdFromIp(ip string) (*VirtualNetworkInterfaceIP, string, error) {
+	for _, v := range *vni.GetVNIs() {
 		for _, i := range v.IPs {
 			if i.Ip == ip {
-				return i, v.SubnetID, nil
+				return &i, v.SubnetID, nil
 			}
 		}
 	}
-	return VirtualNetworkInterfaceIP{}, "", fmt.Errorf("no ID found for IP %s", ip)
+	return &VirtualNetworkInterfaceIP{}, "", fmt.Errorf("no ID found for IP %s", ip)
 }
 
 /*
@@ -48,7 +48,7 @@ This function returns a VNI to which a new IP will be bound.
 The current algorithm selects the VNI with the fewest IPs
 */
 func (vni *VNI) GetVNICandidate() *VirtualNetworkInterface {
-	vnis := vni.GetVNIs()
+	vnis := *vni.GetVNIs()
 	vniToReturn := vnis[0]
 	for _, v := range vnis {
 		if len(v.IPs) < len(vniToReturn.IPs) {
@@ -58,7 +58,7 @@ func (vni *VNI) GetVNICandidate() *VirtualNetworkInterface {
 	return &vniToReturn
 }
 
-func ConvertVNIs(metaResp *metadata.VirtualNetworkInterfaceResponse) []VirtualNetworkInterface {
+func ConvertVNIs(metaResp *metadata.VirtualNetworkInterfaceResponse) *[]VirtualNetworkInterface {
 	var result []VirtualNetworkInterface
 
 	for _, vni := range metaResp.VirtualNetworkInterfaces {
@@ -73,5 +73,5 @@ func ConvertVNIs(metaResp *metadata.VirtualNetworkInterfaceResponse) []VirtualNe
 			IPs:      ips,
 		})
 	}
-	return result
+	return &result
 }
