@@ -17,25 +17,26 @@ import (
 )
 
 var logger = utils.NewLogger()
+var vniInstance = vni.NewVNI()
+var vpcInstance = vpc.NewVPC()
 
 func cmdAdd(args *skel.CmdArgs) error {
 	logger.Log(fmt.Sprintf("New pod: %+v", args))
-	vniInstance := vni.NewVNI().GetVNICandidate()
-	vpcInstance := vpc.NewVPC()
-	reservedID := vpcInstance.ReservedIP(vniInstance.SubnetID)
+	vniCandidate := vniInstance.GetVNICandidate()
+	reservedID := vpcInstance.ReservedIP(vniCandidate.SubnetID)
 	defer func() {
 		if r := recover(); r != nil {
 			if reservedID != nil {
-				vpcInstance.ReleaseIP(vniInstance.SubnetID, reservedID.ID)
+				vpcInstance.ReleaseIP(vniCandidate.SubnetID, reservedID.ID)
 			}
 			panic(r)
 		}
 	}()
-	vpcInstance.AddIP(vniInstance.ID, reservedID.ID)
-	ipNet := getIpNet(reservedID.Address, vpcInstance.GetSubnetPrefix(vniInstance.SubnetID))
-	veth.SetupPodVeth(args, ipNet, vpcInstance.GetGatewayIP(vniInstance.SubnetID), args.Netns)
-	result := getResult(ipNet, vniInstance.SubnetID, vpcInstance)
-	logger.Log(fmt.Sprintf("IP: %s has been added to VNI: %s", reservedID.Address, vniInstance.ID))
+	vpcInstance.AddIP(vniCandidate.ID, reservedID.ID)
+	ipNet := getIpNet(reservedID.Address, vpcInstance.GetSubnetPrefix(vniCandidate.SubnetID))
+	veth.SetupPodVeth(args, ipNet, vpcInstance.GetGatewayIP(vniCandidate.SubnetID), args.Netns)
+	result := getResult(ipNet, vniCandidate.SubnetID, vpcInstance)
+	logger.Log(fmt.Sprintf("IP: %s has been added to VNI: %s", reservedID.Address, vniCandidate.ID))
 	return result.Print()
 }
 
@@ -62,8 +63,6 @@ func getIpNet(address string, prefix int) *net.IPNet {
 
 func cmdDel(args *skel.CmdArgs) error {
 	logger.Log(fmt.Sprintf("Del pod: %+v", args))
-	vniInstance := vni.NewVNI()
-	vpcInstance := vpc.NewVPC()
 	origNS, _ := netns.Get() // save current namespace
 	podNS, _ := netns.GetFromPath(args.Netns)
 	runtime.LockOSThread() // important!
