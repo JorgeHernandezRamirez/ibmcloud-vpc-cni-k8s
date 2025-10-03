@@ -427,6 +427,7 @@ kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/
 
 # Known issues
 **Traffic does not flow through VNIs other than the first one**
+
 Check if interface is
 * UP ```ip link set ens10 up```
 * Has a primary ip assigned ```ip addr add 10.1.1.138/24 dev ens10```
