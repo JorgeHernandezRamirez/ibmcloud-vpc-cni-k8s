@@ -11,16 +11,23 @@ import (
 	"github.com/vishvananda/netns"
 )
 
-func SetupPodVeth(args *skel.CmdArgs, ipNet *net.IPNet, ipNetGateway net.IP, netnsPath string) {
-	hostVeth := createHostInterfaces(args)
-	configureHostProxyArp(hostVeth)
-	configureHostRoute(hostVeth, *ipNet)
+type Veth struct {
+}
+
+func NewVeth() *Veth {
+	return &Veth{}
+}
+
+func (v *Veth) SetupPodVeth(args *skel.CmdArgs, ipNet *net.IPNet, ipNetGateway net.IP, netnsPath string) {
+	hostVeth := v.createHostInterfaces(args)
+	v.configureHostProxyArp(hostVeth)
+	v.configureHostRoute(hostVeth, *ipNet)
 	origNS, _ := netns.Get() //Save current namespace
-	configurePodInterface(args, ipNet, ipNetGateway, netnsPath)
+	v.configurePodInterface(args, ipNet, ipNetGateway, netnsPath)
 	defer netns.Set(origNS) //Back to previous namespace
 }
 
-func configurePodInterface(args *skel.CmdArgs, ipNet *net.IPNet, ipNetGateway net.IP, netnsPath string) {
+func (v *Veth) configurePodInterface(args *skel.CmdArgs, ipNet *net.IPNet, ipNetGateway net.IP, netnsPath string) {
 	podNS, err := netns.GetFromPath(netnsPath) // 2. Get pod network namespace
 	if err != nil {
 		panic(err)
@@ -60,8 +67,8 @@ func configurePodInterface(args *skel.CmdArgs, ipNet *net.IPNet, ipNetGateway ne
 	}
 }
 
-func createHostInterfaces(args *skel.CmdArgs) netlink.Link {
-	hostVethName := getContainerId(args)
+func (v *Veth) createHostInterfaces(args *skel.CmdArgs) netlink.Link {
+	hostVethName := v.getContainerId(args)
 	veth := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
 			Name: args.IfName,
@@ -77,7 +84,7 @@ func createHostInterfaces(args *skel.CmdArgs) netlink.Link {
 	return hostVeth
 }
 
-func configureHostProxyArp(hostVeth netlink.Link) {
+func (v *Veth) configureHostProxyArp(hostVeth netlink.Link) {
 	path := fmt.Sprintf("/proc/sys/net/ipv4/conf/%s/proxy_arp", hostVeth.Attrs().Name)
 	err := os.WriteFile(path, []byte("1"), 0644)
 	if err != nil {
@@ -85,7 +92,7 @@ func configureHostProxyArp(hostVeth netlink.Link) {
 	}
 }
 
-func configureHostRoute(hostVeth netlink.Link, ipNet net.IPNet) {
+func (v *Veth) configureHostRoute(hostVeth netlink.Link, ipNet net.IPNet) {
 	route1 := &netlink.Route{
 		LinkIndex: hostVeth.Attrs().Index,
 		Dst: &net.IPNet{
@@ -98,6 +105,6 @@ func configureHostRoute(hostVeth netlink.Link, ipNet net.IPNet) {
 	}
 }
 
-func getContainerId(args *skel.CmdArgs) string {
+func (v *Veth) getContainerId(args *skel.CmdArgs) string {
 	return fmt.Sprintf("cni0-%s", args.ContainerID[0:10])
 }
