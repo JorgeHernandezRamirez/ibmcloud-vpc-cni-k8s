@@ -12,7 +12,7 @@ import (
 	"github.com/IBM/vpc-go-sdk/vpcv1"
 )
 
-type VPC interface {
+type VPCInterface interface {
 	ReservedIP(subnetID string) *VPCReservedIP
 	ReleaseIP(subnetID string, reservedIP string)
 	AddIP(vniID string, reservedIP string)
@@ -29,7 +29,7 @@ type SdkVPC struct {
 	utils utils.UtilsInterface
 }
 
-func NewVPC() VPC {
+func NewVPC() VPCInterface {
 	utilsInstance := utils.NewUtils()
 	authenticator := &core.BearerTokenAuthenticator{
 		BearerToken: utilsInstance.GetIAMToken(),

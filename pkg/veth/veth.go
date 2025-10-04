@@ -11,10 +11,14 @@ import (
 	"github.com/vishvananda/netns"
 )
 
+type VethInterface interface {
+	SetupPodVeth(args *skel.CmdArgs, ipNet *net.IPNet, ipNetGateway net.IP, netnsPath string)
+}
+
 type Veth struct {
 }
 
-func NewVeth() *Veth {
+func NewVeth() VethInterface {
 	return &Veth{}
 }
 

@@ -17,9 +17,9 @@ import (
 
 type Pod struct {
 	logger   *utils.Logger
-	vniInst  *vni.VNI
-	vethInst *veth.Veth
-	vpcInst  vpc.VPC
+	vniInst  vni.VNIInterface
+	vethInst veth.VethInterface
+	vpcInst  vpc.VPCInterface
 }
 
 func NewPod() *Pod {
@@ -52,7 +52,7 @@ func (p *Pod) Create(args *skel.CmdArgs) *types.Result {
 
 }
 
-func getResult(ipNet *net.IPNet, subnetID string, vpcInstance vpc.VPC) *types.Result {
+func getResult(ipNet *net.IPNet, subnetID string, vpcInstance vpc.VPCInterface) *types.Result {
 	return &types.Result{
 		CNIVersion: "0.4.0",
 		IPs: []*types.IPConfig{

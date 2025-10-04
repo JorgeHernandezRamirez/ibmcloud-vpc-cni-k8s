@@ -17,11 +17,17 @@ type VirtualNetworkInterface struct {
 	IPs      []VirtualNetworkInterfaceIP
 }
 
+type VNIInterface interface {
+	GetVNIs() *[]VirtualNetworkInterface
+	GetIdFromIp(ip string) (*VirtualNetworkInterfaceIP, string, error)
+	GetVNICandidate() *VirtualNetworkInterface
+}
+
 type VNI struct {
 	md metadata.MetadataInterface
 }
 
-func NewVNI() *VNI {
+func NewVNI() VNIInterface {
 	return &VNI{md: metadata.NewMetadataService()}
 }
 
