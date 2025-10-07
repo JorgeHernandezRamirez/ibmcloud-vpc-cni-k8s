@@ -29,8 +29,8 @@ This CNI has been tested in the following environments
 * Improve the way network device names are created to avoid collisions 100%. 
 * Primary IPs for non-primary VNIs are currently not being used.
 * Allow apikey integration.
-* Enable Auto-release option when IP is bound.
 * Implements cached system for metadata service.
+* Installation through Daemonset.
 
 # How to use it
 But before.... If you need a Kubernetes cluster infrastructure go [here](#provision-kubernetes-infrastructure). Remember that you need access to both the master and worker nodes to test it properly.
@@ -220,6 +220,29 @@ resource "ibm_is_subnet" "subnet02" {
   zone            = "${data.ibm_is_region.region.name}-2"
   ipv4_cidr_block = "10.1.2.0/24"
   depends_on = [ibm_is_vpc_address_prefix.ibm_is_vpc_address_prefix02]
+}
+
+resource "ibm_is_public_gateway" "pg_subnet01" {
+  name = "pg-subnet01"
+  vpc  = ibm_is_vpc.vpc.id
+  zone = "${data.ibm_is_region.region.name}-1"
+}
+
+resource "ibm_is_subnet_public_gateway_attachment" "pg_attach_subnet01" {
+  subnet                = ibm_is_subnet.subnet01.id
+  public_gateway         = ibm_is_public_gateway.pg_subnet01.id
+}
+
+
+resource "ibm_is_public_gateway" "pg_subnet02" {
+  name = "pg-subnet02"
+  vpc  = ibm_is_vpc.vpc.id
+  zone = "${data.ibm_is_region.region.name}-2"
+}
+
+resource "ibm_is_subnet_public_gateway_attachment" "pg_attach_subnet02" {
+  subnet                = ibm_is_subnet.subnet02.id
+  public_gateway         = ibm_is_public_gateway.pg_subnet02.id
 }
 
 # SG
@@ -429,8 +452,9 @@ kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/
 **Traffic does not flow through VNIs other than the first one**
 
 Check if interface is
-* UP ```ip link set ens10 up```
-* Has a primary ip assigned ```ip addr add 10.1.1.138/24 dev ens10```
+* UP ```ip link set ens10 up```.
+* Has a primary ip assigned ```ip addr add 10.1.1.138/24 dev ens10```.
+* Disable RPF because incoming and outgoing traffic may use different VNIs in the current configuration.
 
 
 

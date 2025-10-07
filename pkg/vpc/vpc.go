@@ -16,6 +16,7 @@ type VPCInterface interface {
 	ReservedIP(subnetID string) *VPCReservedIP
 	ReleaseIP(subnetID string, reservedIP string)
 	AddIP(vniID string, reservedIP string)
+	AutoRelease(subnetID string, reservedID string)
 	GetGatewayIP(subnetID string) net.IP
 	GetSubnetPrefix(subnetID string) int
 }
@@ -89,6 +90,19 @@ func (v *SdkVPC) AddIP(vniID string, reservedIP string) {
 	})
 	if err != nil {
 		panic(fmt.Sprintf("failed to add IP: %v", err))
+	}
+}
+
+func (v *SdkVPC) AutoRelease(subnetID string, reservedID string) {
+	_, _, err := v.vpcV1.UpdateSubnetReservedIP(&vpcv1.UpdateSubnetReservedIPOptions{
+		SubnetID: &subnetID,
+		ID:       &reservedID,
+		ReservedIPPatch: map[string]interface{}{
+			"auto_delete": true,
+		},
+	})
+	if err != nil {
+		panic(fmt.Sprintf("failed to autorelease IP: %v", err))
 	}
 }
 

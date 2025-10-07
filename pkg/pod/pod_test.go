@@ -77,8 +77,9 @@ func (m *MockVPC) ReleaseIP(subnetID string, reservedIP string) {}
 func (m *MockVPC) AddIP(vniID string, reservedIP string) {
 	m.Called(vniID, reservedIP)
 }
-func (m *MockVPC) GetGatewayIP(subnetID string) net.IP { return net.ParseIP("10.1.0.1") }
-func (m *MockVPC) GetSubnetPrefix(subnetID string) int { return 24 }
+func (m *MockVPC) GetGatewayIP(subnetID string) net.IP            { return net.ParseIP("10.1.0.1") }
+func (m *MockVPC) GetSubnetPrefix(subnetID string) int            { return 24 }
+func (m *MockVPC) AutoRelease(subnetID string, reservedID string) {}
 
 func TestPodCreate(t *testing.T) {
 	mockVPC := prepareVPCMock()

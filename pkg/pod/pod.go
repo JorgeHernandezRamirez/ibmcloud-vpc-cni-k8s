@@ -44,6 +44,7 @@ func (p *Pod) Create(args *skel.CmdArgs) *types.Result {
 		}
 	}()
 	p.vpcInst.AddIP(vniCandidate.ID, reservedID.ID)
+	p.vpcInst.AutoRelease(vniCandidate.SubnetID, reservedID.ID)
 	ipNet := getIpNet(reservedID.Address, p.vpcInst.GetSubnetPrefix(vniCandidate.SubnetID))
 	p.vethInst.SetupPodVeth(args, ipNet, p.vpcInst.GetGatewayIP(vniCandidate.SubnetID), args.Netns)
 	result := getResult(ipNet, vniCandidate.SubnetID, p.vpcInst)
