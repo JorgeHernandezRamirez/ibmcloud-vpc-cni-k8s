@@ -2,6 +2,7 @@ package pod
 
 import (
 	"fmt"
+	"ibmcloud-vpc-cni-k8s/pkg/np"
 	"ibmcloud-vpc-cni-k8s/pkg/utils"
 	"ibmcloud-vpc-cni-k8s/pkg/veth"
 	"ibmcloud-vpc-cni-k8s/pkg/vni"
@@ -47,10 +48,10 @@ func (p *Pod) Create(args *skel.CmdArgs) *types.Result {
 	p.vpcInst.AutoRelease(vniCandidate.SubnetID, reservedID.ID)
 	ipNet := getIpNet(reservedID.Address, p.vpcInst.GetSubnetPrefix(vniCandidate.SubnetID))
 	p.vethInst.SetupPodVeth(args, ipNet, p.vpcInst.GetGatewayIP(vniCandidate.SubnetID), args.Netns)
+	np.NewNetworkPolicy(args).Configure(args, ipNet.IP.String())
 	result := getResult(ipNet, vniCandidate.SubnetID, p.vpcInst)
 	p.logger.Log(fmt.Sprintf("IP: %s has been added to VNI: %s", reservedID.Address, vniCandidate.ID))
 	return result
-
 }
 
 func getResult(ipNet *net.IPNet, subnetID string, vpcInstance vpc.VPCInterface) *types.Result {
@@ -86,6 +87,7 @@ func (p *Pod) Delete(args *skel.CmdArgs) {
 	addrs, _ := netlink.AddrList(podLink, 2)
 	p.releaseIPFromAddrs(addrs)
 	netns.Set(origNS)
+	np.NewNetworkPolicy(args).Deconfigure(args)
 }
 
 func (p *Pod) releaseIPFromAddrs(addrs []netlink.Addr) {

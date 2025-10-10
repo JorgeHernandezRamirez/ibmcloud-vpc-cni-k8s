@@ -3,6 +3,8 @@ package utils
 import (
 	"ibmcloud-vpc-cni-k8s/pkg/metadata"
 	"testing"
+
+	"github.com/containernetworking/cni/pkg/skel"
 )
 
 type MockMetadata struct{}
@@ -119,5 +121,53 @@ func TestGetIAMToken(t *testing.T) {
 	expected := "mock-iam-token"
 	if token != expected {
 		t.Errorf("GetIAMToken() = %s; want %s", token, expected)
+	}
+}
+
+func TestGetHostVPeer(t *testing.T) {
+	containerId := newUtilsWithMock().GetHostVPeer(&skel.CmdArgs{
+		ContainerID: "dfer243ds1adf39-324dsf3-dsf3",
+	})
+	if containerId != "cni0-dfer243ds1" {
+		t.Errorf("GetHostVPeer() = %s; want %s", containerId, "cni0-dfer243ds1")
+	}
+}
+
+func TestGetConfig(t *testing.T) {
+	data := []byte(`{
+		"cniVersion": "0.4.0",
+		"name": "ibm-vpc-cni",
+		"type": "ibmcloud-vpc-cni-k8s",
+		"ipam": {
+		  "type": "static"
+		},
+		"config": {
+		  "network-policy": "ebpf"
+		}
+	  }`)
+	cniConfig := newUtilsWithMock().GetConfig(&skel.CmdArgs{
+		StdinData: data,
+	})
+	if cniConfig.Config.NetworkPolicy != "ebpf" {
+		t.Errorf("TestGetConfig() = %s; want %s", cniConfig.Config.NetworkPolicy, "ebpf")
+	}
+
+	data = []byte(`{
+		"cniVersion": "0.4.0",
+		"name": "ibm-vpc-cni",
+		"type": "ibmcloud-vpc-cni-k8s",
+		"ipam": {
+		  "type": "static"
+		}
+	  }`)
+	cniConfig = newUtilsWithMock().GetConfig(&skel.CmdArgs{
+		StdinData: data,
+	})
+	if cniConfig.Config.NetworkPolicy != "" {
+		t.Errorf("TestGetConfig() = %s; want %s", cniConfig.Config.NetworkPolicy, "")
+	}
+	cniConfig = newUtilsWithMock().GetConfig(&skel.CmdArgs{})
+	if cniConfig.Config.NetworkPolicy != "" {
+		t.Errorf("TestGetConfig() = %s; want %s", cniConfig.Config.NetworkPolicy, "")
 	}
 }

@@ -1,14 +1,28 @@
 package utils
 
 import (
+	"encoding/json"
+	"fmt"
 	"ibmcloud-vpc-cni-k8s/pkg/metadata"
 	"strings"
+
+	"github.com/containernetworking/cni/pkg/skel"
 )
+
+type Config struct {
+	NetworkPolicy string `json:"network-policy"`
+}
+
+type CNIConfig struct {
+	Config Config `json:"config"`
+}
 
 type UtilsInterface interface {
 	GetRegion() string
 	GetDefaultSubnetName() string
 	GetIAMToken() string
+	GetHostVPeer(args *skel.CmdArgs) string
+	GetConfig(args *skel.CmdArgs) *CNIConfig
 }
 
 type Utils struct {
@@ -37,4 +51,20 @@ func (u *Utils) GetIAMToken() string {
 	accessToken, _ := u.md.GetMetadataAccessToken()
 	iamToken, _ := u.md.GetIAMAccessToken(accessToken)
 	return iamToken
+}
+
+func (v *Utils) GetHostVPeer(args *skel.CmdArgs) string {
+	return fmt.Sprintf("cni0-%s", args.ContainerID[0:10])
+}
+
+func (v *Utils) GetConfig(args *skel.CmdArgs) *CNIConfig {
+	var cni CNIConfig
+	if args.StdinData == nil {
+		return &CNIConfig{}
+	}
+	err := json.Unmarshal(args.StdinData, &cni)
+	if err != nil {
+		panic(err)
+	}
+	return &cni
 }

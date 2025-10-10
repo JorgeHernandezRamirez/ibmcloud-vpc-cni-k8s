@@ -2,6 +2,7 @@ package veth
 
 import (
 	"fmt"
+	"ibmcloud-vpc-cni-k8s/pkg/utils"
 	"net"
 	"os"
 	"runtime"
@@ -16,10 +17,13 @@ type VethInterface interface {
 }
 
 type Veth struct {
+	utils utils.UtilsInterface
 }
 
 func NewVeth() VethInterface {
-	return &Veth{}
+	return &Veth{
+		utils: utils.NewUtils(),
+	}
 }
 
 func (v *Veth) SetupPodVeth(args *skel.CmdArgs, ipNet *net.IPNet, ipNetGateway net.IP, netnsPath string) {
@@ -72,7 +76,7 @@ func (v *Veth) configurePodInterface(args *skel.CmdArgs, ipNet *net.IPNet, ipNet
 }
 
 func (v *Veth) createHostInterfaces(args *skel.CmdArgs) netlink.Link {
-	hostVethName := v.getContainerId(args)
+	hostVethName := v.utils.GetHostVPeer(args)
 	veth := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
 			Name: args.IfName,
@@ -107,8 +111,4 @@ func (v *Veth) configureHostRoute(hostVeth netlink.Link, ipNet net.IPNet) {
 	if err := netlink.RouteAdd(route1); err != nil {
 		panic(fmt.Sprintf("failed to add route: %v", err))
 	}
-}
-
-func (v *Veth) getContainerId(args *skel.CmdArgs) string {
-	return fmt.Sprintf("cni0-%s", args.ContainerID[0:10])
 }

@@ -5,6 +5,7 @@ go 1.23.0
 require (
 	github.com/IBM/go-sdk-core/v5 v5.21.0
 	github.com/IBM/vpc-go-sdk v0.73.0
+	github.com/cilium/ebpf v0.19.0
 	github.com/containernetworking/cni v1.3.0
 	github.com/stretchr/testify v1.10.0
 	github.com/vishvananda/netlink v1.3.1

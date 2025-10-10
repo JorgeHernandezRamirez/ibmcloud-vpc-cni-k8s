@@ -89,7 +89,7 @@ func TestPodCreate(t *testing.T) {
 		vpcInst:  mockVPC,
 		vniInst:  &MockVNI{},
 	}
-	result := pod.Create(&skel.CmdArgs{ContainerID: "cont_id_01"})
+	result := pod.Create(&skel.CmdArgs{ContainerID: "cont_id_01", StdinData: []byte("{}")})
 	if result.IPs[0].Address.String() != "10.1.0.6/24" {
 		t.Errorf("primary IP flags incorrect %+v", result.IPs[0].Address.String())
 	}
