@@ -48,7 +48,7 @@ func (p *EBPFNetworkPolicy) Configure(args *skel.CmdArgs, ip string) {
 	if err != nil {
 		panic(fmt.Sprintf("Error: %v", err))
 	}
-	p.logger.Log(fmt.Sprintf("Done")
+	p.logger.Log(fmt.Sprintf("Done"))
 }
 
 func (p *EBPFNetworkPolicy) Deconfigure(args *skel.CmdArgs) {
@@ -58,5 +58,5 @@ func (p *EBPFNetworkPolicy) Deconfigure(args *skel.CmdArgs) {
 	if err != nil {
 		p.logger.Log(fmt.Sprintf("Error: %v", err))
 	}
-	p.logger.Log(fmt.Sprintf("Done")
+	p.logger.Log(fmt.Sprintf("Done"))
 }
