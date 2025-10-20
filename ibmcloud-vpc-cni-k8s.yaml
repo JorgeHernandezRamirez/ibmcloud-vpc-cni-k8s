@@ -104,7 +104,7 @@ spec:
               nsenter --target 1 --mount --uts --ipc --net --pid systemctl restart kubelet || echo "Warning: kubelet restart failed"
 
               echo "Installation completed on node"
-              sleep 30
+              sleep infinity
           volumeMounts:
             - name: host-opt
               mountPath: /host/opt
