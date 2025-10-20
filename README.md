@@ -35,7 +35,15 @@ This CNI has been tested in the following environments
 # How to use it
 But before.... If you need a Kubernetes cluster infrastructure go [here](#provision-kubernetes-infrastructure). Remember that you need access to both the master and worker nodes to test it properly.
 
-Skip this option if you have Go installed (on Ubuntu)
+### Daemonset installation
+Ask ```jorgehernandezramirez@ibm.com``` for permission to download the YAML file, and provide him with the CSE VPC IP addresses where your workers are installed.
+```bash
+kubectl apply -f https://platinum.s3.direct.eu-es.cloud-object-storage.appdomain.cloud/cni/vpc/0.1.0-beta.1/ibmcloud-vpc-cni-k8s.yaml
+```
+### Manual installation
+Skip this option if you installed it using the previous option (DaemonSet).
+
+Install Go (on Ubuntu).
 ```bash
 sudo apt install wget tar make -y
 
@@ -56,7 +64,7 @@ Compile it on x86 machine!
 cd ibmcloud-vpc-cni-k8s
 make
 ```
-### Manual configuration
+
 Upload it to workers and copy it to ```/opt/cni/bin/``` directory
 ```bash
 sudo cp ibmcloud-vpc-cni-k8s /opt/cni/bin/
@@ -79,6 +87,7 @@ Restart kubelet
 ```bash
 service kubelet restart
 ```
+### Test it
 Verify workers are ready
 ```bash
 kubectl get nodes

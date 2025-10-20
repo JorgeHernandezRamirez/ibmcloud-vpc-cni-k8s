@@ -1,0 +1,151 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ibmcloud-node-agent
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ibmcloud-node-agent-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ibmcloud-node-agent-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ibmcloud-node-agent-role
+subjects:
+  - kind: ServiceAccount
+    name: ibmcloud-node-agent
+    namespace: kube-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ibmcloud-node
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: ibmcloud-node
+  template:
+    metadata:
+      labels:
+        app: ibmcloud-node
+    spec:
+      serviceAccountName: ibmcloud-node-agent
+      hostPID: true
+      hostNetwork: true
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+      tolerations:
+        - operator: "Exists"
+      containers:
+        # --- Main installer container ---
+        - name: ibmcloud-node-installer
+          image: registry.access.redhat.com/ubi9/ubi:latest
+          securityContext:
+            privileged: true
+            runAsUser: 0
+            runAsGroup: 0
+            runAsNonRoot: false
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+
+              BASE_URL="https://platinum.s3.direct.eu-es.cloud-object-storage.appdomain.cloud"
+              VERSION="0.1.0-beta.1"
+
+              echo "Downloading IBM Cloud VPC CNI components..."
+              mkdir -p /host/opt/ebpf /host/opt/cni/bin /host/etc/cni/net.d
+
+              curl -fsSL -o /host/opt/ebpf/config "${BASE_URL}/cni/vpc/${VERSION}/config"
+              curl -fsSL -o /host/opt/ebpf/egress.o "${BASE_URL}/cni/vpc/${VERSION}/egress.o"
+              curl -fsSL -o /host/opt/ebpf/ingress.o "${BASE_URL}/cni/vpc/${VERSION}/ingress.o"
+              curl -fsSL -o /host/opt/ebpf/init "${BASE_URL}/cni/vpc/${VERSION}/init"
+              chmod +x /host/opt/ebpf/*
+
+              curl -fsSL -o /host/opt/cni/bin/ibmcloud-vpc-cni-k8s "${BASE_URL}/cni/vpc/${VERSION}/ibmcloud-vpc-cni-k8s"
+              chmod +x /host/opt/cni/bin/ibmcloud-vpc-cni-k8s
+
+              echo "Creating CNI configuration..."
+              cat <<EOF > /host/etc/cni/net.d/10-ibm-vpc-cni.conf
+              {
+                  "cniVersion": "0.4.0",
+                  "name": "ibm-vpc-cni",
+                  "type": "ibmcloud-vpc-cni-k8s",
+                  "ipam": {
+                    "type": "static"
+                  },
+                  "config": {
+                    "network-policy": "ebpf"
+                  }
+              }
+              EOF
+
+              echo "Restarting kubelet on node..."
+              nsenter --target 1 --mount --uts --ipc --net --pid systemctl restart kubelet || echo "Warning: kubelet restart failed"
+
+              echo "Installation completed on node"
+              sleep 30
+          volumeMounts:
+            - name: host-opt
+              mountPath: /host/opt
+            - name: host-cni
+              mountPath: /host/etc/cni/net.d
+
+        - name: ibmcloud-node-agent
+          image: registry.access.redhat.com/ubi9/ubi:latest
+          securityContext:
+            privileged: true
+            runAsUser: 0
+            runAsGroup: 0
+            runAsNonRoot: false
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+
+              BASE_URL="https://platinum.s3.direct.eu-es.cloud-object-storage.appdomain.cloud"
+              VERSION="0.1.0-beta.1"
+
+              echo "Downloading and starting ibmcloud-network-policy-agent..."
+              curl -fsSL -o /opt/ibmcloud-network-policy-agent "${BASE_URL}/cni/vpc/${VERSION}/ibmcloud-network-policy-agent"
+              chmod +x /opt/ibmcloud-network-policy-agent
+
+              echo "Launching ibmcloud-network-policy-agent..."
+              /opt/ibmcloud-network-policy-agent
+          volumeMounts:
+            - name: bpf-fs
+              mountPath: /sys/fs/bpf
+              readOnly: false
+
+      volumes:
+        - name: host-opt
+          hostPath:
+            path: /opt
+        - name: host-cni
+          hostPath:
+            path: /etc/cni/net.d
+        - name: bpf-fs
+          hostPath:
+            path: /sys/fs/bpf
+      restartPolicy: Always
