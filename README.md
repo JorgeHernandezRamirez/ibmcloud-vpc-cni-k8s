@@ -30,7 +30,7 @@ This CNI has been tested in the following environments
 * Primary IPs for non-primary VNIs are currently not being used.
 * Allow apikey integration.
 * Implements cached system for metadata service.
-* Installation through Daemonset.
+* Implements cidr range pod on annotations.
 
 # How to use it
 But before.... If you need a Kubernetes cluster infrastructure go [here](#provision-kubernetes-infrastructure). Remember that you need access to both the master and worker nodes to test it properly.
